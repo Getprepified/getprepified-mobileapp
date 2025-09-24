@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Smartprepnaija",
-    "slug": "Smartprepnaija",
+    "name": "Getprepified",
+    "slug": "Getprepified",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "smartprepnaija",
+    "scheme": "Getprepified",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
