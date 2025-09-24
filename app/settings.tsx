@@ -1,175 +1,358 @@
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
-  Pressable,
-  ScrollView,
-  Alert,
   StyleSheet,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  ScrollView,
+  Modal,
 } from "react-native";
-import { Link } from "expo-router";
+import FooterNavigation from "./components/FooterNavigation";
+import { useAuth } from "./contexts/UserContext";
+import apiClient from "./utils/apiClient";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../lib/auth";
 
-const rowStyles = StyleSheet.create({
-  pressable: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E8E4FF",
-    marginBottom: 12,
-  },
-  leftContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  titleText: {
-    marginLeft: 12,
-    color: "#0C0A1C",
-    fontFamily: "Urbanist",
-    fontSize: 16,
-  },
-});
-
-function Row({
-  title,
-  href,
-  icon,
-}: {
-  title: string;
-  href: string;
-  icon: any;
-}) {
-  return (
-    <Link href={href} asChild>
-      <Pressable style={rowStyles.pressable}>
-        <View style={rowStyles.leftContainer}>
-          <Ionicons name={icon} size={20} color="#6D57FC" />
-          <Text style={rowStyles.titleText}>{title}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color="#B0A4FD" />
-      </Pressable>
-    </Link>
+const SettingsPage = () => {
+  const { user, token, logout } = useAuth();
+  const [me, setMe] = useState<any>(user);
+  const [nickname, setNickname] = useState(user?.nickname || "");
+  const [schoolModal, setSchoolModal] = useState(false);
+  const [parentModal, setParentModal] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!token) return;
+        const res = await apiClient.get("/api/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMe(res.data);
+        if (res.data?.nickname) setNickname(res.data.nickname);
+      } catch {}
+    })();
+  }, [token]);
+  const nicknameLocked = Boolean(me?.nickname);
+  const uniqueCode = useMemo(
+    () => (me?._id ? me._id.slice(-6).toUpperCase() : "------"),
+    [me?._id]
   );
-}
+  const [schoolCode, setSchoolCode] = useState("");
+  const [parentCode, setParentCode] = useState("");
 
-export default function Settings() {
-  const { logout, user } = useAuth();
+  const isLinkedToSchool = Boolean(me?.school || me?.schoolId);
+  const isLinkedToParent = Boolean(me?.parent || me?.parentId);
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
+  const saveNickname = async () => {
+    if (!token) return;
+    await apiClient.patch(
+      "/api/users/me",
+      { nickname },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  };
+
+  const linkSchool = async () => {
+    if (!token || !schoolCode) return;
+    await apiClient.post(
+      "/api/users/link-school",
+      { code: schoolCode },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const res = await apiClient.get("/api/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMe(res.data);
+  };
+
+  const linkParent = async () => {
+    if (!token || !parentCode) return;
+    await apiClient.post(
+      "/api/users/link-parent",
+      { code: parentCode },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const res = await apiClient.get("/api/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMe(res.data);
   };
 
   return (
-    <ScrollView style={styles.scrollView}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <Text style={styles.headerSubtitle}>Manage your preferences.</Text>
-        {user && (
-          <Text style={styles.loggedInText}>
-            Logged in as {user.fullName} ({user.role})
-          </Text>
-        )}
-      </View>
+    <View style={styles.container}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
 
-      <View style={styles.contentContainer}>
-        <Row title="Profile" href="/settings/profile" icon="person-outline" />
-        <Row
-          title="Link Account"
-          href="/settings/link-account"
-          icon="link-outline"
-        />
-        <Row
-          title="Notifications"
-          href="/settings/notifications"
-          icon="notifications-outline"
-        />
-        <Row title="Privacy" href="/settings/privacy" icon="shield-outline" />
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <View style={styles.logoutButtonContent}>
-            <View style={styles.logoutIconContainer}>
-              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            </View>
-            <Text style={styles.logoutText}>Logout</Text>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrapper}>
+            {me?.avatarUrl ? (
+              <Image source={{ uri: me.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitial}>
+                  {(
+                    (me?.fullName || "ST")
+                      .split(" ")
+                      .map((w) => w[0])
+                      .join("")
+                      .slice(0, 2) || "ST"
+                  ).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity style={styles.uploadBtn}>
+              <Ionicons name="camera" size={16} color="#ffffff" />
+            </TouchableOpacity>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#0C0A1C" />
-        </Pressable>
-      </View>
-    </ScrollView>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.nameText}>{me?.fullName || "Student"}</Text>
+            <Text style={styles.emailText}>{me?.email || ""}</Text>
+            <Text style={styles.codeLabel}>Unique Code</Text>
+            <Text style={styles.codeValue}>{uniqueCode}</Text>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Nickname</Text>
+          <View style={styles.rowBetween}>
+            <TextInput
+              value={nickname}
+              onChangeText={setNickname}
+              placeholder="Set a nickname"
+              style={[
+                styles.input,
+                nicknameLocked && { backgroundColor: "#F3F4F6" },
+              ]}
+              editable={!nicknameLocked}
+            />
+            <TouchableOpacity
+              style={[styles.primaryBtn, nicknameLocked && { opacity: 0.6 }]}
+              onPress={saveNickname}
+              disabled={nicknameLocked}
+            >
+              <Text style={styles.primaryBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Link to School</Text>
+          {isLinkedToSchool ? (
+            <TouchableOpacity
+              style={styles.emptyState}
+              onPress={() => setSchoolModal(true)}
+            >
+              <Ionicons name="school" size={24} color="#10B981" />
+              <Text style={styles.emptyText}>
+                Linked to a school (tap to view)
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <Text style={styles.helpText}>
+                Enter your school code to link your profile
+              </Text>
+              <View style={styles.rowBetween}>
+                <TextInput
+                  value={schoolCode}
+                  onChangeText={setSchoolCode}
+                  placeholder="School code"
+                  style={styles.input}
+                />
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={linkSchool}
+                >
+                  <Text style={styles.primaryBtnText}>Link</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Link to Parent</Text>
+          {isLinkedToParent ? (
+            <TouchableOpacity
+              style={styles.emptyState}
+              onPress={() => setParentModal(true)}
+            >
+              <Ionicons name="people" size={24} color="#10B981" />
+              <Text style={styles.emptyText}>
+                Linked to a parent (tap to view)
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <Text style={styles.helpText}>
+                Enter parent code to share your progress
+              </Text>
+              <View style={styles.rowBetween}>
+                <TextInput
+                  value={parentCode}
+                  onChangeText={setParentCode}
+                  placeholder="Parent code"
+                  style={styles.input}
+                />
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={linkParent}
+                >
+                  <Text style={styles.primaryBtnText}>Link</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={{ height: 80 }} />
+      </ScrollView>
+      <FooterNavigation />
+      <TouchableOpacity
+        style={styles.logoutBtn}
+        onPress={() => {
+          logout();
+        }}
+      >
+        <Text style={styles.logoutText}>Log out</Text>
+      </TouchableOpacity>
+
+      <Modal
+        transparent
+        visible={schoolModal}
+        animationType="fade"
+        onRequestClose={() => setSchoolModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>School Details</Text>
+            <Text style={styles.modalRow}>Name: {me?.school?.name || "-"}</Text>
+            <Text style={styles.modalRow}>Code: {me?.school?.code || "-"}</Text>
+            <Text style={styles.modalRow}>City: {me?.school?.city || "-"}</Text>
+            <Text style={styles.modalRow}>
+              Country: {me?.school?.country || "-"}
+            </Text>
+            <TouchableOpacity
+              style={[styles.primaryBtn, { marginTop: 12 }]}
+              onPress={() => setSchoolModal(false)}
+            >
+              <Text style={styles.primaryBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={parentModal}
+        animationType="fade"
+        onRequestClose={() => setParentModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Parent Details</Text>
+            <Text style={styles.modalRow}>Name: {me?.parent?.name || "-"}</Text>
+            <Text style={styles.modalRow}>
+              Email: {me?.parent?.email || "-"}
+            </Text>
+            <Text style={styles.modalRow}>
+              Parent Code: {me?.parent?.parentCode || "-"}
+            </Text>
+            <TouchableOpacity
+              style={[styles.primaryBtn, { marginTop: 12 }]}
+              onPress={() => setParentModal(false)}
+            >
+              <Text style={styles.primaryBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  scrollView: {
+  container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#ffffff",
   },
-  headerContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 24,
-    backgroundColor: "#E8E4FF",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerTitle: {
-    fontSize: 30,
-    fontFamily: "Urbanist",
-    fontWeight: "bold",
-    color: "#0C0A1C",
-  },
-  headerSubtitle: {
-    color: "#261E58",
-    marginTop: 8,
-  },
-  loggedInText: {
-    fontSize: 14,
-    fontFamily: "Inter",
-    color: "rgba(38,30,88,0.7)",
-    marginTop: 8,
-  },
-  contentContainer: {
-    paddingHorizontal: 24,
-    marginTop: 24,
-  },
-  logoutButton: {
+  header: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 6 },
+  headerTitle: { fontSize: 22, fontWeight: "800", color: "#111827" },
+  profileCard: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "white",
+    backgroundColor: "#ffffff",
+    margin: 20,
+    marginTop: 12,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E8E4FF",
+    borderColor: "#E5E7EB",
   },
-  logoutButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  logoutIconContainer: {
-    height: 40,
-    width: 40,
-    borderRadius: 9999,
-    backgroundColor: "#FEE2E2",
-    alignItems: "center",
+  avatarWrapper: { marginRight: 16 },
+  avatar: { width: 64, height: 64, borderRadius: 32 },
+  avatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#8B5CF6",
     justifyContent: "center",
-    marginRight: 16,
+    alignItems: "center",
   },
-  logoutText: {
-    fontSize: 18,
-    fontFamily: "Inter",
-    color: "#EF4444",
+  avatarInitial: { color: "#ffffff", fontSize: 20, fontWeight: "800" },
+  uploadBtn: {
+    position: "absolute",
+    right: -6,
+    bottom: -6,
+    backgroundColor: "#8B5CF6",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
+  nameText: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  emailText: { color: "#6B7280", marginTop: 2 },
+  codeLabel: { color: "#6B7280", fontSize: 12, marginTop: 8 },
+  codeValue: { color: "#111827", fontWeight: "800", letterSpacing: 2 },
+  card: {
+    backgroundColor: "#ffffff",
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  cardTitle: {
+    color: "#111827",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  rowBetween: { flexDirection: "row", alignItems: "center" },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginRight: 10,
+  },
+  primaryBtn: {
+    backgroundColor: "#8B5CF6",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  primaryBtnText: { color: "#ffffff", fontWeight: "700" },
+  helpText: { color: "#6B7280", marginBottom: 8 },
+  emptyState: { flexDirection: "row", alignItems: "center", gap: 8 },
+  emptyText: { color: "#10B981", fontWeight: "600" },
+  logoutBtn: { position: "absolute", right: 16, top: 18 },
+  logoutText: { color: "#EF4444", fontWeight: "700" },
 });
+
+export default SettingsPage;
