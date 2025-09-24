@@ -1,211 +1,79 @@
-import { View, Text, ScrollView, Pressable, Dimensions, StyleSheet } from "react-native";
-import { Link } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import React from 'react';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
+import Onboarding from 'react-native-onboarding-swiper';
+import { useRouter } from 'expo-router';
 
-const { width } = Dimensions.get('window');
+const OnboardingScreen = () => {
+  const router = useRouter();
 
-const onboardingData = [
-  {
-    id: 1,
-    title: "Welcome to GetPrep",
-    subtitle: "Your Ultimate Learning Companion",
-    description: "Master WAEC subjects with personalized practice, track your progress, and achieve academic excellence.",
-    icon: "school-outline",
-    color: "#6D57FC"
-  },
-  {
-    id: 2,
-    title: "Practice & Learn",
-    subtitle: "Thousands of Past Questions",
-    description: "Access 20+ years of WAEC past questions across all subjects. Practice with instant feedback and detailed explanations.",
-    icon: "library-outline",
-    color: "#4CAF50"
-  },
-  {
-    id: 3,
-    title: "Track Progress",
-    subtitle: "Monitor Your Growth",
-    description: "Get detailed analytics on your performance, identify weak areas, and track your improvement over time.",
-    icon: "trending-up-outline",
-    color: "#FF9800"
-  },
-  {
-    id: 4,
-    title: "Stay Connected",
-    subtitle: "Parents & Teachers Included",
-    description: "Parents can monitor their child's progress, while teachers can create assignments and track class performance.",
-    icon: "people-outline",
-    color: "#E91E63"
-  }
-];
+  const handleOnboardingDone = () => {
+    router.replace('/dashboard');
+  };
 
-export default function Onboarding() {
   return (
-    <ScrollView style={styles.scrollView}>
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerInnerContainer}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>GP</Text>
-          </View>
-          <Pressable style={styles.skipButton}>
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Onboarding Content */}
-      <View style={styles.onboardingContentContainer}>
-        {onboardingData.map((item, index) => (
-          <View key={item.id} style={styles.itemContainer}>
-            <View style={styles.itemIconContainer}>
-              <View 
-                style={[styles.itemIconBackground, { backgroundColor: `${item.color}20` }]}
-              >
-                <Ionicons name={item.icon as any} size={40} color={item.color} />
-              </View>
-              
-              <Text style={styles.itemTitle}>
-                {item.title}
-              </Text>
-              <Text style={styles.itemSubtitle}>
-                {item.subtitle}
-              </Text>
-              <Text style={styles.itemDescription}>
-                {item.description}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        <Link href="/register" asChild>
-          <Pressable style={styles.getStartedButton}>
-            <Text style={styles.getStartedText}>Get Started</Text>
-          </Pressable>
-        </Link>
-        
-        <Link href="/login" asChild>
-          <Pressable style={styles.alreadyHaveAccountButton}>
-            <Text style={styles.alreadyHaveAccountText}>I Already Have an Account</Text>
-          </Pressable>
-        </Link>
-      </View>
-    </ScrollView>
+    <Onboarding
+      onDone={handleOnboardingDone}
+      onSkip={handleOnboardingDone}
+      pages={[
+        {
+          backgroundColor: '#6366f1', // Indigo primary color
+          image: <Image source={require('../assets/images/react-logo.png')} className="w-48 h-48" />,
+          title: 'Welcome to GetPrep!',
+          subtitle: 'Master your exams with personalized practice and real-time feedback.',
+        },
+        {
+          backgroundColor: '#059669', // Emerald green
+          image: <Image source={require('../assets/images/splash-icon.png')} className="w-48 h-48" />,
+          title: 'Practice with Real Questions',
+          subtitle: 'Access thousands of authentic WAEC, NECO, and JAMB past questions.',
+        },
+        {
+          backgroundColor: '#dc2626', // Red for progress tracking
+          image: <Image source={require('../assets/images/icon.png')} className="w-48 h-48" />,
+          title: 'Track Your Progress',
+          subtitle: 'Monitor your performance with detailed analytics and insights.',
+        },
+        {
+          backgroundColor: '#7c3aed', // Purple for community
+          image: <Image source={require('../assets/images/react-logo.png')} className="w-48 h-48" />,
+          title: 'Compete & Learn',
+          subtitle: 'Challenge friends, climb leaderboards, and stay motivated.',
+        },
+      ]}
+      NextButtonComponent={({ ...props }) => (
+        <TouchableOpacity className="p-4 bg-white rounded-full shadow-lg" {...props}>
+          <Text className="text-indigo-600 font-bold text-lg">Next</Text>
+        </TouchableOpacity>
+      )}
+      SkipButtonComponent={({ ...props }) => (
+        <TouchableOpacity className="p-4" {...props}>
+          <Text className="text-white opacity-70">Skip</Text>
+        </TouchableOpacity>
+      )}
+      DoneButtonComponent={({ ...props }) => (
+        <TouchableOpacity className="p-4 bg-white rounded-full shadow-lg" {...props}>
+          <Text className="text-indigo-600 font-bold text-lg">Get Started</Text>
+        </TouchableOpacity>
+      )}
+      DotComponent={({ selected }) => (
+        <View className={`w-3 h-3 rounded-full mx-1 ${selected ? 'bg-white' : 'bg-white opacity-30'}`} />
+      )}
+      titleStyles={{
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#ffffff',
+        textAlign: 'center',
+        marginBottom: 16,
+      }}
+      subTitleStyles={{
+        fontSize: 16,
+        color: '#ffffff',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+        opacity: 0.9,
+      }}
+    />
   );
-}
+};
 
-const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  headerContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 24,
-  },
-  headerInnerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  logoContainer: {
-    height: 48,
-    width: 48,
-    borderRadius: 9999,
-    backgroundColor: '#6D57FC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    color: 'white',
-    fontSize: 20,
-    fontFamily: 'Urbanist',
-    fontWeight: 'bold',
-  },
-  skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  skipText: {
-    color: '#261E58',
-    fontFamily: 'Inter',
-  },
-  onboardingContentContainer: {
-    paddingHorizontal: 24,
-  },
-  itemContainer: {
-    marginBottom: 48,
-  },
-  itemIconContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  itemIconBackground: {
-    height: 96,
-    width: 96,
-    borderRadius: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  itemTitle: {
-    fontSize: 30,
-    fontFamily: 'Urbanist',
-    fontWeight: 'bold',
-    color: '#0C0A1C',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  itemSubtitle: {
-    fontSize: 20,
-    fontFamily: 'Urbanist',
-    fontWeight: 'semibold',
-    color: '#6D57FC',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  itemDescription: {
-    fontSize: 18,
-    fontFamily: 'Inter',
-    color: 'rgba(38,30,88,0.7)',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  actionButtonsContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    marginTop: 32,
-  },
-  getStartedButton: {
-    backgroundColor: '#6D57FC',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  getStartedText: {
-    color: 'white',
-    fontSize: 18,
-    fontFamily: 'Urbanist',
-    fontWeight: 'bold',
-  },
-  alreadyHaveAccountButton: {
-    borderWidth: 2,
-    borderColor: '#6D57FC',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alreadyHaveAccountText: {
-    color: '#6D57FC',
-    fontSize: 18,
-    fontFamily: 'Urbanist',
-    fontWeight: 'bold',
-  },
-});
+export default OnboardingScreen;
