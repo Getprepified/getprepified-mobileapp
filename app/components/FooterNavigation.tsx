@@ -31,6 +31,12 @@ const FooterNavigation: React.FC<FooterNavigationProps> = () => {
       route: '/hub',
     },
     {
+      id: 'messages',
+      label: 'Messages',
+      icon: 'chatbubble-ellipses' as keyof typeof Ionicons.glyphMap,
+      route: '/messages',
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: 'settings' as keyof typeof Ionicons.glyphMap,
