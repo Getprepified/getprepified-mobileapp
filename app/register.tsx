@@ -1,460 +1,486 @@
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  Pressable,
-  ScrollView,
+  TouchableOpacity,
   Alert,
-  ActivityIndicator,
+  ScrollView,
   StyleSheet,
 } from "react-native";
-import { Link, router } from "expo-router";
-import { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../lib/auth";
+import { useRouter } from "expo-router";
+import { useAuth } from "./contexts/UserContext";
+import { Logger } from "./utils/logger";
 
-export default function Register() {
+const RegisterPage = () => {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("student"); // 'student' or 'parent'
+  const [schoolCode, setSchoolCode] = useState("");
+  const [parentCode, setParentCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const { register } = useAuth();
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "student" as "student" | "parent",
-    schoolCode: "",
-    parentCode: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const validateForm = () => {
-    if (!formData.fullName.trim()) {
-      Alert.alert("Error", "Please enter your full name");
-      return false;
-    }
-    if (!formData.email.trim()) {
-      Alert.alert("Error", "Please enter your email");
-      return false;
-    }
-    if (!formData.email.includes("@")) {
-      Alert.alert("Error", "Please enter a valid email address");
-      return false;
-    }
-    if (formData.password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return false;
-    }
-    return true;
-  };
 
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    // Validation
+    if (!fullName.trim() || !email.trim() || !password.trim()) {
+      Alert.alert("Error", "Please fill in all required fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsLoading(true);
+    Logger.info("🔄 User attempting registration", { email, role });
 
     try {
-      setLoading(true);
-      const payload = {
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-        role: formData.role,
-        ...(formData.schoolCode && { schoolCode: formData.schoolCode.trim() }),
-        ...(formData.parentCode && { parentCode: formData.parentCode.trim() }),
+      const registrationData: any = {
+        fullName,
+        email,
+        password,
       };
 
-      await register(payload);
-      Alert.alert("Success", "Account created successfully!", [
-        { text: "OK", onPress: () => router.replace("/(tabs)") },
-      ]);
+      // Add role-specific fields
+      if (role === "parent") {
+        registrationData.role = "parent";
+        registrationData.adminSecret =
+          process.env.ADMIN_REGISTRATION_SECRET || "";
+      }
+
+      if (schoolCode) {
+        registrationData.schoolCode = schoolCode;
+      }
+
+      if (parentCode) {
+        registrationData.parentCode = parentCode;
+      }
+
+      const success = await register(registrationData);
+
+      if (success) {
+        Logger.info("✅ Registration successful, navigating to dashboard");
+
+        if (role === "parent") {
+          Alert.alert(
+            "Registration Successful",
+            "You are now registered as a parent. Your parent code will be shown in your profile.",
+            [{ text: "OK", onPress: () => router.replace("/dashboard") }]
+          );
+        } else {
+          Alert.alert(
+            "Registration Successful",
+            "Welcome to GetPrep! You can now start learning.",
+            [{ text: "OK", onPress: () => router.replace("/dashboard") }]
+          );
+        }
+      } else {
+        Logger.warn("❌ Registration failed");
+        Alert.alert(
+          "Registration Failed",
+          "Registration failed. Please try again."
+        );
+      }
     } catch (error: any) {
-      console.error("Registration error:", error);
+      Logger.error("💥 Registration error occurred", error);
       Alert.alert(
-        "Error",
-        error.response?.data?.error || "Registration failed. Please try again."
+        "Registration Failed",
+        "An unexpected error occurred. Please try again."
       );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.scrollView}>
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerInnerContainer}>
-          <Link href="/onboarding" asChild>
-            <Pressable style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#0C0A1C" />
-            </Pressable>
-          </Link>
-          <Text style={styles.createAccountText}>Create Account</Text>
-          <View style={styles.spacer} />
-        </View>
+    <View style={styles.container}>
+      {/* Header Section */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Join GetPrep</Text>
+        <Text style={styles.subtitle}>
+          Create your account and start learning
+        </Text>
       </View>
 
-      {/* Form */}
-      <View style={styles.formContainer}>
+      {/* Form Section */}
+      <ScrollView
+        style={styles.formContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Role Selection */}
-        <View style={styles.roleSelectionContainer}>
-          <Text style={styles.roleSelectionTitle}>I am a:</Text>
-          <View style={styles.roleButtonsContainer}>
-            <Pressable
+        <View style={styles.roleSection}>
+          <Text style={styles.roleLabel}>I am registering as:</Text>
+          <View style={styles.roleButtons}>
+            <TouchableOpacity
               style={[
                 styles.roleButton,
-                formData.role === "student" && styles.roleButtonStudentActive,
-                formData.role === "student" && styles.roleButtonStudentInactive,
+                role === "student"
+                  ? styles.roleButtonActive
+                  : styles.roleButtonInactive,
               ]}
-              onPress={() => handleInputChange("role", "student")}
+              onPress={() => setRole("student")}
             >
-              <Ionicons
-                name="person-outline"
-                size={24}
-                color={formData.role === "student" ? "#6D57FC" : "#9CA3AF"}
-                style={styles.roleIcon}
-              />
               <Text
                 style={[
-                  styles.roleTextActive,
-                  formData.role === "student" && styles.roleTextInactive,
+                  styles.roleButtonText,
+                  role === "student"
+                    ? styles.roleButtonTextActive
+                    : styles.roleButtonTextInactive,
                 ]}
               >
                 Student
               </Text>
-            </Pressable>
-
-            <Pressable
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
                 styles.roleButton,
-                formData.role === "parent" && styles.roleButtonParentActive,
-                formData.role === "parent" && styles.roleButtonParentInactive,
+                role === "parent"
+                  ? styles.roleButtonActive
+                  : styles.roleButtonInactive,
               ]}
-              onPress={() => handleInputChange("role", "parent")}
+              onPress={() => setRole("parent")}
             >
-              <Ionicons
-                name="people-outline"
-                size={24}
-                color={formData.role === "parent" ? "#6D57FC" : "#9CA3AF"}
-                style={styles.roleIcon}
-              />
               <Text
                 style={[
-                  styles.roleTextActive,
-                  formData.role === "parent" && styles.roleTextInactive,
+                  styles.roleButtonText,
+                  role === "parent"
+                    ? styles.roleButtonTextActive
+                    : styles.roleButtonTextInactive,
                 ]}
               >
                 Parent
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Personal Information */}
-        <View style={styles.personalInfoContainer}>
-          <Text style={styles.personalInfoTitle}>Personal Information</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Full Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your full name"
+            placeholderTextColor="#9CA3AF"
+            value={fullName}
+            onChangeText={setFullName}
+            autoCapitalize="words"
+          />
+        </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formData.fullName}
-              onChangeText={(value) => handleInputChange("fullName", value)}
-              placeholder="Enter your full name"
-              autoCapitalize="words"
-            />
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formData.email}
-              onChangeText={(value) => handleInputChange("email", value)}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Create a password"
+            placeholderTextColor="#9CA3AF"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={styles.passwordInputContainer}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Confirm Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm your password"
+            placeholderTextColor="#9CA3AF"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Conditional fields based on role */}
+        {role === "student" && (
+          <>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>School Code (Optional)</Text>
               <TextInput
-                style={styles.passwordInput}
-                value={formData.password}
-                onChangeText={(value) => handleInputChange("password", value)}
-                placeholder="Create a password"
-                secureTextEntry={!showPassword}
+                style={styles.input}
+                placeholder="Enter your school code"
+                placeholderTextColor="#9CA3AF"
+                value={schoolCode}
+                onChangeText={setSchoolCode}
+                autoCapitalize="characters"
               />
-              <Pressable
-                style={styles.eyeIconContainer}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color="#9CA3AF"
-                />
-              </Pressable>
+              <Text style={styles.helperText}>
+                Get this code from your school administrator
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Parent Code (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your parent's code"
+                placeholderTextColor="#9CA3AF"
+                value={parentCode}
+                onChangeText={setParentCode}
+                autoCapitalize="characters"
+              />
+              <Text style={styles.helperText}>
+                Get this code from your parent
+              </Text>
+            </View>
+          </>
+        )}
+
+        {role === "parent" && (
+          <View style={styles.infoSection}>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoTitle}>Parent Registration Info:</Text>
+              <Text style={styles.infoText}>
+                After registration, you'll receive a unique parent code that you
+                can share with your child to link their account to yours.
+              </Text>
             </View>
           </View>
+        )}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Confirm Password</Text>
-            <TextInput
-              style={styles.textInput}
-              value={formData.confirmPassword}
-              onChangeText={(value) =>
-                handleInputChange("confirmPassword", value)
-              }
-              placeholder="Confirm your password"
-              secureTextEntry={!showPassword}
-            />
-          </View>
-        </View>
-
-        {/* Optional Codes */}
-        <View style={styles.optionalCodesContainer}>
-          <Text style={styles.optionalCodesTitle}>
-            Optional: Link Your Account
-          </Text>
-          <Text style={styles.optionalCodesDescription}>
-            {formData.role === "student"
-              ? "Enter school or parent codes to link your account (you can do this later)"
-              : "You will receive a parent code after registration to share with your children"}
-          </Text>
-
-          {formData.role === "student" && (
-            <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>School Code (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={formData.schoolCode}
-                  onChangeText={(value) =>
-                    handleInputChange("schoolCode", value)
-                  }
-                  placeholder="Enter school code"
-                  autoCapitalize="characters"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Parent Code (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={formData.parentCode}
-                  onChangeText={(value) =>
-                    handleInputChange("parentCode", value)
-                  }
-                  placeholder="Enter parent code"
-                  autoCapitalize="characters"
-                />
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* Register Button */}
-        <Pressable
-          style={styles.registerButton}
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            isLoading && styles.primaryButtonDisabled,
+          ]}
           onPress={handleRegister}
-          disabled={loading}
+          disabled={isLoading}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.registerButtonText}>Create Account</Text>
-          )}
-        </Pressable>
+          <Text style={styles.primaryButtonText}>
+            {isLoading ? "Creating Account..." : "Create Account"}
+          </Text>
+        </TouchableOpacity>
 
-        {/* Login Link */}
-        <View style={styles.loginLinkContainer}>
-          <Text style={styles.loginText}>Already have an account? </Text>
-          <Link href="/login" asChild>
-            <Pressable>
-              <Text style={styles.loginLink}>Sign In</Text>
-            </Pressable>
-          </Link>
+        <View style={styles.dividerContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.divider} />
         </View>
-      </View>
-    </ScrollView>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push("/login")}
+        >
+          <Text style={styles.secondaryButtonText}>Sign In Instead</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push("/login")}
+          style={styles.linkContainer}
+        >
+          <Text style={styles.linkText}>
+            Already have an account?{" "}
+            <Text style={styles.linkTextBold}>Sign in here</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  scrollView: {
+  container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#059669", // Emerald gradient start
   },
-  headerContainer: {
+  header: {
+    paddingTop: 80,
+    paddingBottom: 32,
     paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 24,
   },
-  headerInnerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#ffffff",
+    textAlign: "center",
+    marginBottom: 8,
   },
-  backButton: {
-    padding: 8,
-  },
-  createAccountText: {
+  subtitle: {
     fontSize: 18,
-    fontFamily: "Urbanist",
-    fontWeight: "semibold",
-    color: "#0C0A1C",
-  },
-  spacer: {
-    width: 32,
+    color: "#ffffff",
+    textAlign: "center",
+    opacity: 0.9,
   },
   formContainer: {
-    paddingHorizontal: 24,
     flex: 1,
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 32,
   },
-  roleSelectionContainer: {
+  roleSection: {
     marginBottom: 24,
   },
-  roleSelectionTitle: {
-    fontSize: 18,
-    fontFamily: "Inter",
-    color: "#0C0A1C",
-    marginBottom: 16,
+  roleLabel: {
+    color: "#374151",
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 12,
   },
-  roleButtonsContainer: {
+  roleButtons: {
     flexDirection: "row",
-    // space-x-4
+    gap: 16,
   },
   roleButton: {
     flex: 1,
-    paddingVertical: 16,
+    height: 48,
     borderRadius: 12,
     borderWidth: 2,
+    justifyContent: "center",
     alignItems: "center",
   },
-  roleButtonStudentActive: {
-    borderColor: "#6D57FC",
-    backgroundColor: "rgba(109,87,252,0.1)",
+  roleButtonActive: {
+    borderColor: "#059669",
+    backgroundColor: "#ecfdf5",
   },
-  roleButtonStudentInactive: {
-    borderColor: "#E5E7EB",
+  roleButtonInactive: {
+    borderColor: "#e5e7eb",
+    backgroundColor: "#f9fafb",
   },
-  roleButtonParentActive: {
-    borderColor: "#6D57FC",
-    backgroundColor: "rgba(109,87,252,0.1)",
+  roleButtonText: {
+    fontWeight: "600",
   },
-  roleButtonParentInactive: {
-    borderColor: "#E5E7EB",
+  roleButtonTextActive: {
+    color: "#059669",
   },
-  roleIcon: {
-    marginBottom: 8,
-  },
-  roleTextActive: {
-    marginTop: 8,
-    fontFamily: "Urbanist",
-    fontWeight: "semibold",
-    color: "#6D57FC",
-  },
-  roleTextInactive: {
-    marginTop: 8,
-    fontFamily: "Urbanist",
-    fontWeight: "semibold",
-    color: "#6B7280",
-  },
-  personalInfoContainer: {
-    marginBottom: 24,
-  },
-  personalInfoTitle: {
-    fontSize: 18,
-    fontFamily: "Inter",
-    color: "#0C0A1C",
-    marginBottom: 16,
+  roleButtonTextInactive: {
+    color: "#6b7280",
   },
   inputGroup: {
     marginBottom: 16,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: "Inter",
-    color: "#261E58",
+  label: {
+    color: "#374151",
+    fontSize: 16,
+    fontWeight: "500",
     marginBottom: 8,
   },
-  textInput: {
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
+  input: {
+    width: "100%",
+    height: 56,
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    fontFamily: "Inter",
-    color: "#0C0A1C",
-  },
-  passwordInputContainer: {
-    position: "relative",
-  },
-  passwordInput: {
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    fontFamily: "Inter",
-    color: "#0C0A1C",
-    paddingRight: 48,
+    borderColor: "#e5e7eb",
+    color: "#1f2937",
+    fontSize: 16,
   },
-  eyeIconContainer: {
-    position: "absolute",
-    right: 16,
-    top: 16,
+  helperText: {
+    color: "#6b7280",
+    fontSize: 14,
+    marginTop: 4,
   },
-  optionalCodesContainer: {
+  infoSection: {
     marginBottom: 32,
   },
-  optionalCodesTitle: {
-    fontSize: 18,
-    fontFamily: "Inter",
-    color: "#0C0A1C",
-    marginBottom: 16,
+  infoBox: {
+    backgroundColor: "#eff6ff",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
   },
-  optionalCodesDescription: {
+  infoTitle: {
+    color: "#1e40af",
     fontSize: 14,
-    fontFamily: "Inter",
-    color: "rgba(38,30,88,0.7)",
-    marginBottom: 16,
+    fontWeight: "500",
+    marginBottom: 8,
   },
-  registerButton: {
-    backgroundColor: "#6D57FC",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
+  infoText: {
+    color: "#1d4ed8",
+    fontSize: 14,
+  },
+  primaryButton: {
+    width: "100%",
+    height: 56,
+    backgroundColor: "#059669",
+    borderRadius: 12,
     justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 24,
   },
-  registerButtonText: {
-    color: "white",
-    fontSize: 18,
-    fontFamily: "Urbanist",
-    fontWeight: "bold",
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e5e7eb",
   },
-  loginLinkContainer: {
-    flexDirection: "row",
+  dividerText: {
+    paddingHorizontal: 16,
+    color: "#6b7280",
+    fontSize: 14,
+  },
+  secondaryButton: {
+    width: "100%",
+    height: 56,
+    borderWidth: 2,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 24,
+  },
+  secondaryButtonText: {
+    color: "#374151",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  linkContainer: {
     marginBottom: 32,
   },
-  loginText: {
-    color: "#261E58",
-    fontFamily: "Inter",
+  linkText: {
+    textAlign: "center",
+    color: "#059669",
+    fontSize: 16,
+    fontWeight: "500",
   },
-  loginLink: {
-    color: "#6D57FC",
-    fontFamily: "Urbanist",
-    fontWeight: "semibold",
+  linkTextBold: {
+    fontWeight: "600",
   },
 });
+
+export default RegisterPage;
