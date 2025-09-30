@@ -246,17 +246,7 @@ const DashboardPage = () => {
             <Image source={courseOfTheWeek.image} style={styles.courseThumbnail} />
             <View style={styles.courseInfo}>
               <Text style={styles.courseTitle}>{courseOfTheWeek.title}</Text>
-              <Text style={styles.courseDuration}>Duration: {courseOfTheWeek.duration}</Text>
-              <View style={styles.ratingContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Text key={star} style={[
-                    styles.star,
-                    star <= courseOfTheWeek.rating ? styles.starFilled : styles.starEmpty
-                  ]}>
-                    ⭐
-                  </Text>
-                ))}
-              </View>
+              {/* Removed duration and rating display for weekly courses */}
             </View>
             <TouchableOpacity style={styles.arrowButton}>
               <Ionicons name="chevron-forward" size={16} color="#6B7280" />
