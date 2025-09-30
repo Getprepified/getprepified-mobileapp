@@ -1,4 +1,4 @@
-// Comprehensive logging utility for API requests and responses
+// Enhanced logging utility for API requests and responses
 export class Logger {
   private static formatTimestamp(): string {
     return new Date().toISOString();
@@ -6,10 +6,16 @@ export class Logger {
 
   private static log(level: string, message: string, data?: any) {
     const timestamp = this.formatTimestamp();
-    const logMessage = `[${timestamp}] [${level}] ${message}`;
+    const env = process.env.NODE_ENV || "development";
+    const logMessage = `[${timestamp}] [${env.toUpperCase()}] [${level}] ${message}`;
 
     if (data) {
-      console.log(logMessage, data);
+      // Pretty print objects only in development
+      if (env === "development") {
+        console.log(logMessage, data);
+      } else {
+        console.log(logMessage);
+      }
     } else {
       console.log(logMessage);
     }
@@ -28,14 +34,17 @@ export class Logger {
   }
 
   static debug(message: string, data?: any) {
-    this.log("DEBUG", message, data);
+    // Debug logs only in development
+    if ((process.env.NODE_ENV || "development") === "development") {
+      this.log("DEBUG", message, data);
+    }
   }
 
   // API-specific logging methods
   static logRequest(method: string, url: string, headers?: any, body?: any) {
     this.info(`🚀 API REQUEST: ${method} ${url}`, {
-      headers: headers,
-      body: body,
+      headers,
+      body,
       timestamp: this.formatTimestamp(),
     });
   }
@@ -49,8 +58,8 @@ export class Logger {
   ) {
     const statusEmoji = status >= 200 && status < 300 ? "✅" : "❌";
     this.info(`${statusEmoji} API RESPONSE: ${method} ${url} - ${status}`, {
-      status: status,
-      data: data,
+      status,
+      data: (process.env.NODE_ENV === "development") ? data : undefined, // hide data in prod
       duration: duration ? `${duration}ms` : undefined,
       timestamp: this.formatTimestamp(),
     });
@@ -59,7 +68,7 @@ export class Logger {
   static logError(method: string, url: string, error: any) {
     this.error(`💥 API ERROR: ${method} ${url}`, {
       error: error.message || error,
-      stack: error.stack,
+      stack: (process.env.NODE_ENV === "development") ? error.stack : undefined,
       timestamp: this.formatTimestamp(),
     });
   }
