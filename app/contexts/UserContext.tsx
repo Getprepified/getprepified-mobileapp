@@ -1,15 +1,9 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import apiClient from "../utils/apiClient";
-import { Logger } from "../utils/logger";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient from '../utils/apiClient';
+import { Logger } from '../utils/logger';
 
-const API_URL = "http://localhost:4000";
+const API_URL = apiClient.defaults.baseURL;
 
 interface User {
   _id: string;
@@ -38,7 +32,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
@@ -58,19 +52,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadStoredAuth = async () => {
     try {
-      Logger.info("🔄 Loading stored authentication data");
-      const storedToken = await AsyncStorage.getItem("userToken");
-      const storedUser = await AsyncStorage.getItem("userData");
-
+      Logger.info('🔄 Loading stored authentication data');
+      const storedToken = await AsyncStorage.getItem('userToken');
+      const storedUser = await AsyncStorage.getItem('userData');
+      
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
-        Logger.info("✅ Stored authentication data loaded successfully");
+        Logger.info('✅ Stored authentication data loaded successfully');
       } else {
-        Logger.info("ℹ️ No stored authentication data found");
+        Logger.info('ℹ️ No stored authentication data found');
       }
     } catch (error) {
-      Logger.error("❌ Error loading stored authentication data", error);
+      Logger.error('❌ Error loading stored authentication data', error);
     } finally {
       setIsLoading(false);
     }
@@ -78,36 +72,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserData = async () => {
     if (!token) {
-      Logger.warn("⚠️ No token available for fetching user data");
+      Logger.warn('⚠️ No token available for fetching user data');
       return;
     }
 
     try {
-      Logger.info("🔄 Fetching user data from API");
+      Logger.info('🔄 Fetching user data from API');
       const startTime = Date.now();
-
-      const response = await apiClient.get("/api/users/me", {
+      
+      const response = await apiClient.get('/api/users/me', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       const duration = Date.now() - startTime;
-      Logger.logResponse(
-        "GET",
-        `${API_URL}/users/me`,
-        response.status,
-        response.data,
-        duration
-      );
-
+      Logger.logResponse('GET', `${API_URL}/users/me`, response.status, response.data, duration);
+      
       setUser(response.data);
-      await AsyncStorage.setItem("userData", JSON.stringify(response.data));
-      Logger.info("✅ User data fetched and stored successfully");
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data));
+      Logger.info('✅ User data fetched and stored successfully');
     } catch (error: any) {
-      Logger.logError("GET", `${API_URL}/users/me`, error);
+      Logger.logError('GET', `${API_URL}/users/me`, error);
       if (error.response?.status === 401) {
-        Logger.warn("🔐 Token expired, logging out user");
+        Logger.warn('🔐 Token expired, logging out user');
         await logout();
       }
     }
@@ -116,48 +104,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      Logger.info("🔄 Starting login process", { email });
-
+      Logger.info('🔄 Starting login process', { email });
+      
       const startTime = Date.now();
-      const response = await apiClient.post("/api/auth/login", {
+      const response = await apiClient.post('/api/auth/login', {
         email,
         password,
       });
 
       const duration = Date.now() - startTime;
-      Logger.logResponse(
-        "POST",
-        `${API_URL}/login`,
-        response.status,
-        response.data,
-        duration
-      );
+      Logger.logResponse('POST', `${API_URL}/login`, response.status, response.data, duration);
 
       const { token: authToken, user: userData } = response.data;
-
+      
       if (authToken && userData) {
         setToken(authToken);
         setUser(userData);
-
+        
         // Store in AsyncStorage
-        await AsyncStorage.setItem("userToken", authToken);
-        await AsyncStorage.setItem("userData", JSON.stringify(userData));
-
-        Logger.info("✅ Login successful", {
-          userId: userData._id,
-          userRole: userData.role,
-        });
-
+        await AsyncStorage.setItem('userToken', authToken);
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        
+        Logger.info('✅ Login successful', { userId: userData._id, userRole: userData.role });
+        
         // Fetch fresh user data to ensure we have the latest information
         await fetchUserData();
-
+        
         return true;
       } else {
-        Logger.error("❌ Login response missing token or user data");
+        Logger.error('❌ Login response missing token or user data');
         return false;
       }
     } catch (error: any) {
-      Logger.logError("POST", `${API_URL}/login`, error);
+      Logger.logError('POST', `${API_URL}/login`, error);
       return false;
     } finally {
       setIsLoading(false);
@@ -167,48 +146,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: any): Promise<boolean> => {
     try {
       setIsLoading(true);
-      Logger.info("🔄 Starting registration process", {
-        email: userData.email,
-        role: userData.role,
-      });
-
+      Logger.info('🔄 Starting registration process', { email: userData.email, role: userData.role });
+      
       const startTime = Date.now();
-      const response = await apiClient.post("/api/auth/register", userData);
+      const response = await apiClient.post('/api/auth/register', userData);
 
       const duration = Date.now() - startTime;
-      Logger.logResponse(
-        "POST",
-        `${API_URL}/register`,
-        response.status,
-        response.data,
-        duration
-      );
+      Logger.logResponse('POST', `${API_URL}/register`, response.status, response.data, duration);
 
       const { token: authToken, user: newUser } = response.data;
-
+      
       if (authToken && newUser) {
         setToken(authToken);
         setUser(newUser);
-
+        
         // Store in AsyncStorage
-        await AsyncStorage.setItem("userToken", authToken);
-        await AsyncStorage.setItem("userData", JSON.stringify(newUser));
-
-        Logger.info("✅ Registration successful", {
-          userId: newUser._id,
-          userRole: newUser.role,
-        });
-
+        await AsyncStorage.setItem('userToken', authToken);
+        await AsyncStorage.setItem('userData', JSON.stringify(newUser));
+        
+        Logger.info('✅ Registration successful', { userId: newUser._id, userRole: newUser.role });
+        
         // Fetch fresh user data to ensure we have the latest information
         await fetchUserData();
-
+        
         return true;
       } else {
-        Logger.error("❌ Registration response missing token or user data");
+        Logger.error('❌ Registration response missing token or user data');
         return false;
       }
     } catch (error: any) {
-      Logger.logError("POST", `${API_URL}/register`, error);
+      Logger.logError('POST', `${API_URL}/register`, error);
       return false;
     } finally {
       setIsLoading(false);
@@ -217,19 +184,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      Logger.info("🔄 Logging out user");
-
+      Logger.info('🔄 Logging out user');
+      
       // Clear state
       setUser(null);
       setToken(null);
-
+      
       // Clear AsyncStorage
-      await AsyncStorage.removeItem("userToken");
-      await AsyncStorage.removeItem("userData");
-
-      Logger.info("✅ Logout successful");
+      await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('userData');
+      
+      Logger.info('✅ Logout successful');
     } catch (error) {
-      Logger.error("❌ Error during logout", error);
+      Logger.error('❌ Error during logout', error);
     }
   };
 
