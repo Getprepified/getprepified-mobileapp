@@ -85,6 +85,19 @@ const StudyTopicPage = () => {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <View style={{ padding: 16, backgroundColor: '#ffffff', borderTopWidth: 1, borderColor: '#E5E7EB' }}>
+        <TouchableOpacity style={{ backgroundColor: '#10B981', borderRadius: 12, alignItems: 'center', paddingVertical: 12 }} onPress={async () => {
+          try {
+            await apiClient.patch(`/api/courses/${courseId}/lessons/progress`, { lessonIndex: Number(topicIndex || 0) });
+            router.back();
+          } catch (e) {
+            Logger.error('💥 Failed to update progress', e);
+            router.back();
+          }
+        }}>
+          <Text style={{ color: '#ffffff', fontWeight: '800' }}>Done</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -95,7 +108,7 @@ const styles = StyleSheet.create({
   backButton: { padding: 8 },
   headerTitle: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
   content: { flex: 1, backgroundColor: '#F8FAFC', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16 },
-  card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+  card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 },
   paragraph: { fontSize: 14, color: '#374151', lineHeight: 20 },
   exampleBlock: { marginBottom: 16 },
