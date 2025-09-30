@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
 import FooterNavigation from "./components/FooterNavigation";
 import { useAuth } from "./contexts/UserContext";
@@ -17,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 const SettingsPage = () => {
   const { user, token, logout } = useAuth();
   const [me, setMe] = useState<any>(user);
-  const [nickname, setNickname] = useState(user?.nickname || "");
+  const [nickname, setNickname] = useState((user as any)?.nickname || "");
   const [schoolModal, setSchoolModal] = useState(false);
   const [parentModal, setParentModal] = useState(false);
   useEffect(() => {
@@ -95,7 +96,7 @@ const SettingsPage = () => {
                   {(
                     (me?.fullName || "ST")
                       .split(" ")
-                      .map((w) => w[0])
+                      .map((w: string) => w[0])
                       .join("")
                       .slice(0, 2) || "ST"
                   ).toUpperCase()}
@@ -225,23 +226,47 @@ const SettingsPage = () => {
         animationType="fade"
         onRequestClose={() => setSchoolModal(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>School Details</Text>
-            <Text style={styles.modalRow}>Name: {me?.school?.name || "-"}</Text>
-            <Text style={styles.modalRow}>Code: {me?.school?.code || "-"}</Text>
-            <Text style={styles.modalRow}>City: {me?.school?.city || "-"}</Text>
-            <Text style={styles.modalRow}>
-              Country: {me?.school?.country || "-"}
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { marginTop: 12 }]}
-              onPress={() => setSchoolModal(false)}
-            >
-              <Text style={styles.primaryBtnText}>Close</Text>
-            </TouchableOpacity>
+        <TouchableWithoutFeedback onPress={() => setSchoolModal(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalCard}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>School Details</Text>
+                  <TouchableOpacity
+                    style={styles.closeBtn}
+                    onPress={() => setSchoolModal(false)}
+                  >
+                    <Ionicons name="close" size={20} color="#111827" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalBody}>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Name:</Text>{" "}
+                    {me?.school?.name || "-"}
+                  </Text>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Code:</Text>{" "}
+                    {me?.school?.code || "-"}
+                  </Text>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>City:</Text>{" "}
+                    {me?.school?.city || "-"}
+                  </Text>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Country:</Text>{" "}
+                    {me?.school?.country || "-"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { marginTop: 12 }]}
+                  onPress={() => setSchoolModal(false)}
+                >
+                  <Text style={styles.primaryBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
@@ -250,24 +275,43 @@ const SettingsPage = () => {
         animationType="fade"
         onRequestClose={() => setParentModal(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Parent Details</Text>
-            <Text style={styles.modalRow}>Name: {me?.parent?.name || "-"}</Text>
-            <Text style={styles.modalRow}>
-              Email: {me?.parent?.email || "-"}
-            </Text>
-            <Text style={styles.modalRow}>
-              Parent Code: {me?.parent?.parentCode || "-"}
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryBtn, { marginTop: 12 }]}
-              onPress={() => setParentModal(false)}
-            >
-              <Text style={styles.primaryBtnText}>Close</Text>
-            </TouchableOpacity>
+        <TouchableWithoutFeedback onPress={() => setParentModal(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalCard}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Parent Details</Text>
+                  <TouchableOpacity
+                    style={styles.closeBtn}
+                    onPress={() => setParentModal(false)}
+                  >
+                    <Ionicons name="close" size={20} color="#111827" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalBody}>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Name:</Text>{" "}
+                    {me?.parent?.name || "-"}
+                  </Text>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Email:</Text>{" "}
+                    {me?.parent?.email || "-"}
+                  </Text>
+                  <Text style={styles.modalRow}>
+                    <Text style={styles.modalLabel}>Parent Code:</Text>{" "}
+                    {me?.parent?.parentCode || "-"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { marginTop: 12 }]}
+                  onPress={() => setParentModal(false)}
+                >
+                  <Text style={styles.primaryBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
@@ -353,6 +397,41 @@ const styles = StyleSheet.create({
   emptyText: { color: "#10B981", fontWeight: "600" },
   logoutBtn: { position: "absolute", right: 16, top: 18 },
   logoutText: { color: "#EF4444", fontWeight: "700" },
+  // Modals (upgraded)
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  modalCard: {
+    width: "92%",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    elevation: 6,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
+  },
+  modalTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
+  modalBody: { marginTop: 6 },
+  modalRow: { color: "#111827", marginTop: 6 },
+  modalLabel: { color: "#6B7280" },
 });
 
 export default SettingsPage;
