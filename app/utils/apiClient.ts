@@ -1,17 +1,17 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import { Logger } from "./logger";
-import { ONLINE_API_SERVER_URL, LOCAL_API_SERVER_URL } from "@env";
+// import { ONLINE_API_SERVER_URL, LOCAL_API_SERVER_URL } from "@env";
 
 // Base URL depending on environment
-const BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? ONLINE_API_SERVER_URL
-    : LOCAL_API_SERVER_URL;
-console.log("API ENV URL:", ONLINE_API_SERVER_URL);
-console.log("API Client Base URL:", BASE_URL);
+// const BASE_URL =
+//   process.env.NODE_ENV === "production"
+//     ? ONLINE_API_SERVER_URL
+//     : LOCAL_API_SERVER_URL;
+// console.log("API ENV URL:", ONLINE_API_SERVER_URL);
+// console.log("API Client Base URL:", BASE_URL);
 // Create axios instance with interceptors for comprehensive logging
 const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: " https://getprep.onrender.com",
   timeout: 10000,
 });
 
