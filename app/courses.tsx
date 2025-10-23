@@ -18,6 +18,7 @@ interface CourseCategory {
   courseCount: number;
   color: string;
   icon: keyof typeof Ionicons.glyphMap;
+  subjects?: string[];
 }
 
 const CoursesPage = () => {
@@ -30,6 +31,8 @@ const CoursesPage = () => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<any[]>([]);
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<CourseCategory | null>(null);
   const router = useRouter();
 
   // Subject colors and icons mapping
@@ -120,7 +123,7 @@ const CoursesPage = () => {
 
   const getCourseCategories = (): CourseCategory[] => {
     if (activeTab === 'Combined') {
-      return combinedSets.map((set) => ({ id: set.id, name: set.name || set.subjects.join(' + '), courseCount: set.subjects.length, color: '#8B5CF6', icon: 'school' }));
+      return combinedSets.map((set) => ({ id: set.id, name: set.name || 'Combined Set', subjects: set.subjects, courseCount: set.subjects.length, color: '#8B5CF6', icon: 'school' }));
     }
     if (activeTab === 'History') {
       return [];
@@ -135,17 +138,130 @@ const CoursesPage = () => {
     }));
   };
 
-  const renderCourseCard = ({ item }: { item: CourseCategory }) => (
-    <TouchableOpacity 
-      style={[styles.courseCard, { backgroundColor: item.color }]}
-      onPress={() => {
-        if (activeTab === 'Combined') {
-          const set = combinedSets.find((s) => s.id === item.id);
-          if (set) router.push({ pathname: '/pre-exam', params: { subjects: set.subjects.join(','), combined: 'true' } });
-        } else {
-          router.push({ pathname: '/pre-exam', params: { subject: item.name, combined: 'false' } });
+  const truncateSubject = (name: string) => name.length > 4 ? name.slice(0, 6) + '...' : name;
+
+  const handleDifficultySelection = async (difficulty: 'junior' | 'senior') => {
+    if (!selectedCourse) return;
+
+    setShowDifficultyModal(false);
+
+    if (activeTab === 'Combined') {
+      const set = combinedSets.find((s) => s.id === selectedCourse.id);
+      if (set) {
+        // Fetch questions for combined subjects with difficulty
+        await fetchQuestionsForSubjects(set.subjects, true, set.subjects.join(','), difficulty);
+      }
+    } else {
+      // Fetch questions for single subject with difficulty
+      await fetchQuestionsForSubjects([selectedCourse.name], false, selectedCourse.name, difficulty);
+    }
+  };
+
+  const handleHistoryPress = (test: any) => {
+    console.log('Navigating to exam-results with test data:', test);
+    router.push({
+      pathname: '/exam-results',
+      params: {
+        score: test.score.toString(), // Percentage
+        total: test.total.toString(),
+        percentage: test.score.toString(),
+        duration: test.duration.toString(),
+        testId: test.id,
+        testName: test.name,
+        subjects: test.subjects.join(', '),
+        createdAt: test.createdAt,
+        testData: JSON.stringify(test)
+      }
+    });
+  };
+
+  const fetchQuestionsForSubjects = async (subjects: string[], isCombined: boolean, subjectParam: string, difficulty: 'junior' | 'senior' = 'junior') => {
+    try {
+      setLoading(true);
+
+      // Map mobile app subject names to database subject names (reverse mapping)
+      const subjectMapping: Record<string, string> = {
+        'English': 'English Language',
+        'Mathematics': 'Mathematics',
+        'Physics': 'Physics',
+        'Chemistry': 'Chemistry',
+        'Biology': 'Biology',
+        'Economics': 'Economics',
+        'Government': 'Government',
+        'Literature': 'Literature',
+        'Geography': 'Geography',
+        'Commerce': 'Commerce',
+        'Accounting': 'Accounting',
+        'CRS': 'CRS',
+        'History': 'History',
+        'Civic Education': 'Civic Education',
+        'Computer Studies': 'Computer Studies'
+      };
+
+      // Convert subject names to database format
+      const dbSubjects = subjects.map(subject => subjectMapping[subject] || subject);
+
+      // Fetch questions for each subject
+      const questionsPerSubject = dbSubjects.length === 1 ? 50 : Math.floor(100 / dbSubjects.length);
+      const allQuestions: any[] = [];
+
+      for (const subject of dbSubjects) {
+        const response = await apiClient.get(`/questions`, {
+          params: {
+            subject,
+            limit: questionsPerSubject,
+            difficulty, // Add difficulty parameter
+            // Removed examType filter to match DB questions with undefined examType
+          }
+        });
+
+        // Validate response structure
+        const questions = Array.isArray(response.data) ? response.data : [];
+        allQuestions.push(...questions.filter(q => q && q.prompt && q.options && q.options.length > 0));
+      }
+
+      Logger.info('📚 Questions fetched for subjects', {
+        count: allQuestions.length,
+        subjects: dbSubjects,
+        isCombined,
+        difficulty
+      });
+
+      if (allQuestions.length === 0) {
+        Logger.error('No valid questions found for the selected subjects');
+        alert('No questions found for the selected subjects. Please try again or contact support.');
+        return;
+      }
+
+      // Navigate to pre-exam with questions and difficulty
+      router.push({
+        pathname: '/pre-exam',
+        params: {
+          subject: subjectParam,
+          combined: isCombined ? 'true' : 'false',
+          subjects: subjects.join(','),
+          questions: JSON.stringify(allQuestions),
+          duration: String(allQuestions.length), // 1 minute per question
+          difficulty
         }
-      }}
+      });
+    } catch (error) {
+      Logger.error('💥 Error fetching questions for subjects:', error);
+      alert('Error loading questions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubjectPress = (item: CourseCategory) => {
+    setSelectedCourse(item);
+    setShowDifficultyModal(true);
+  };
+
+  const renderCourseCard = ({ item }: { item: CourseCategory }) => (
+    <TouchableOpacity
+      style={[styles.courseCard, { backgroundColor: item.color }]}
+      onPress={() => handleSubjectPress(item)}
     >
       <View style={styles.cardContent}>
         <View style={styles.iconContainer}>
@@ -153,7 +269,14 @@ const CoursesPage = () => {
         </View>
         <View style={styles.cardTextContainer}>
           <Text style={styles.courseTitle}>{item.name}</Text>
-          <Text style={styles.courseCount}>{item.courseCount} Course{item.courseCount !== 1 ? 's' : ''}</Text>
+          {item.subjects && (
+            <View style={styles.subjectBlocks}>
+              {item.subjects.map((subject) => (
+                <Text key={subject} style={styles.subjectBlock}>{truncateSubject(subject)}</Text>
+              ))}
+            </View>
+          )}
+          <Text style={styles.courseCount}>{item.courseCount} Subject{item.courseCount !== 1 ? 's' : ''}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -250,7 +373,11 @@ const CoursesPage = () => {
                 </View>
               ) : (
                 results.map(r => (
-                  <View key={r.id} style={styles.historyCard}>
+                  <TouchableOpacity
+                    key={r.id}
+                    style={styles.historyCard}
+                    onPress={() => handleHistoryPress(r)}
+                  >
                     <View style={styles.historyHeader}>
                       <Text style={styles.historyTitle}>{r.name || 'Exam'}</Text>
                       <View style={[styles.miniCircle, { backgroundColor: (r.score || 0) >= 70 ? '#22C55E' : (r.score || 0) >= 40 ? '#F59E0B' : '#EF4444' }]}>
@@ -263,7 +390,7 @@ const CoursesPage = () => {
                       ))}
                     </View>
                     <Text style={styles.historyMeta}>{new Date(r.createdAt).toLocaleString()}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </View>
@@ -296,33 +423,45 @@ const CoursesPage = () => {
         </TouchableOpacity>
       )}
 
-      <Modal transparent visible={showAddModal} animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+      <Modal transparent visible={showDifficultyModal} animationType="slide" onRequestClose={() => setShowDifficultyModal(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Create Combined Subjects</Text>
-            <TextInput value={search} onChangeText={setSearch} placeholder="Search subjects" style={styles.search} />
-            <ScrollView style={{ maxHeight: 300 }}>
-              {subjects
-                .filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
-                .map((s) => (
-                  <TouchableOpacity key={s.name} style={styles.subjectRow} onPress={() => setSelected((prev) => ({ ...prev, [s.name]: !prev[s.name] }))}>
-                    <Text style={styles.subjectName}>{s.name}</Text>
-                    <Ionicons name={selected[s.name] ? 'checkmark-circle' : 'add-circle-outline'} size={22} color={selected[s.name] ? '#10B981' : '#6B7280'} />
-                  </TouchableOpacity>
-                ))}
-            </ScrollView>
+            <Text style={styles.modalTitle}>Select Difficulty Level</Text>
+            <Text style={styles.modalSubtitle}>Choose your preferred difficulty for {selectedCourse?.name}</Text>
+
             <TouchableOpacity
-              style={[styles.submitBtn, (Object.keys(selected).filter((k) => selected[k]).length < 2 || Object.keys(selected).filter((k) => selected[k]).length > 4) && styles.submitBtnDisabled]}
-              disabled={Object.keys(selected).filter((k) => selected[k]).length < 2 || Object.keys(selected).filter((k) => selected[k]).length > 4}
-              onPress={async () => {
-                const subjectsChosen = Object.keys(selected).filter((k) => selected[k]);
-                await apiClient.post('/api/combined-sets', { subjects: subjectsChosen }, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
-                setShowAddModal(false);
-                setSelected({});
-                fetchCombinedSets();
-              }}
+              style={[styles.difficultyOption, styles.juniorOption]}
+              onPress={() => handleDifficultySelection('junior')}
             >
-              <Text style={styles.submitBtnText}>Save</Text>
+              <View style={styles.difficultyIcon}>
+                <Ionicons name="school" size={32} color="#10B981" />
+              </View>
+              <View style={styles.difficultyContent}>
+                <Text style={styles.difficultyTitle}>Junior Level</Text>
+                <Text style={styles.difficultyDescription}>Basic concepts and simpler questions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#10B981" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.difficultyOption, styles.seniorOption]}
+              onPress={() => handleDifficultySelection('senior')}
+            >
+              <View style={styles.difficultyIcon}>
+                <Ionicons name="rocket" size={32} color="#F59E0B" />
+              </View>
+              <View style={styles.difficultyContent}>
+                <Text style={styles.difficultyTitle}>Senior Level</Text>
+                <Text style={styles.difficultyDescription}>Advanced concepts and challenging questions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#F59E0B" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowDifficultyModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -456,9 +595,24 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     opacity: 0.8,
   },
+  subjectBlocks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  subjectBlock: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontSize: 10,
+    color: '#ffffff',
+    marginRight: 4,
+    marginBottom: 4,
+  },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   miniCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  miniCircleText: { color: '#FFFFFF', fontWeight: '700' },
+  miniCircleText: { color: '#FFFFFF', fontWeight: '500' },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, gap: 6 },
   chip: { backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 9999 },
   chipText: { color: '#4F46E5', fontWeight: '600', fontSize: 12 },
@@ -488,7 +642,61 @@ const styles = StyleSheet.create({
   subjectName: { color: '#111827' },
   submitBtn: { marginTop: 12, backgroundColor: '#10B981', alignItems: 'center', paddingVertical: 12, borderRadius: 12 },
   submitBtnDisabled: { backgroundColor: '#A7F3D0' },
-  submitBtnText: { color: '#ffffff', fontWeight: '700' },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  difficultyOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+  },
+  juniorOption: {
+    borderColor: '#10B981',
+  },
+  seniorOption: {
+    borderColor: '#F59E0B',
+  },
+  difficultyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  difficultyContent: {
+    flex: 1,
+  },
+  difficultyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  difficultyDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  cancelButton: {
+    marginTop: 16,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  cancelButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });
 
 export default CoursesPage;
