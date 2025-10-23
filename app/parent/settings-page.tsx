@@ -1,20 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/UserContext';
 import { Logger } from '../utils/logger';
+import apiClient from '../utils/apiClient';
 
 const ParentSettings = () => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [schools, setSchools] = useState<any[]>([]);
+  const [selectedSchool, setSelectedSchool] = useState<any>(null);
+  const [showSchoolModal, setShowSchoolModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   console.log('ParentSettings component rendered');
   console.log('User:', user ? 'logged in' : 'not logged in');
   console.log('User object:', JSON.stringify(user, null, 2));
   console.log('Logout function available:', typeof logout);
+
+  // Fetch parent-linked schools
+  useEffect(() => {
+    const fetchSchools = async () => {
+      if (!token) return;
+
+      setLoading(true);
+      try {
+        const response = await apiClient.get('/api/users/parent/schools', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSchools(response.data.schools || []);
+      } catch (error) {
+        console.error('Error fetching schools:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchools();
+  }, [token]);
 
   // Fetch user profile if parentCode is missing
   useEffect(() => {
@@ -24,6 +50,11 @@ const ParentSettings = () => {
       // For now, this is a placeholder - you may need to implement profile fetching in UserContext
     }
   }, [user]);
+
+  const handleSchoolPress = (school: any) => {
+    setSelectedSchool(school);
+    setShowSchoolModal(true);
+  };
 
   const handleLogout = () => {
     console.log('handleLogout function called');
@@ -110,6 +141,45 @@ const ParentSettings = () => {
           </View>
         </View>
 
+        {/* Linked Schools Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Linked Schools</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading schools...</Text>
+            </View>
+          ) : schools.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="school-outline" size={24} color="#6B7280" />
+              <Text style={styles.emptyStateText}>No schools linked yet</Text>
+            </View>
+          ) : (
+            <View>
+              {schools.map((school) => (
+                <TouchableOpacity
+                  key={school.id}
+                  style={styles.schoolCard}
+                  onPress={() => handleSchoolPress(school)}
+                >
+                  <View style={styles.schoolInfo}>
+                    <Ionicons name="school" size={20} color="#8B5CF6" style={styles.schoolIcon} />
+                    <View style={styles.schoolDetails}>
+                      <Text style={styles.schoolName}>{school.name}</Text>
+                      <Text style={styles.schoolLocation}>
+                        {school.city && school.country
+                          ? `${school.city}, ${school.country}`
+                          : school.city || school.country || 'Location not specified'}
+                      </Text>
+                      <Text style={styles.schoolCode}>Code: {school.code}</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* Account Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Actions</Text>
@@ -171,6 +241,72 @@ const ParentSettings = () => {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* School Detail Modal */}
+      <Modal
+        transparent
+        visible={showSchoolModal}
+        animationType="fade"
+        onRequestClose={() => setShowSchoolModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowSchoolModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>School Details</Text>
+                  <TouchableOpacity
+                    style={styles.closeBtn}
+                    onPress={() => setShowSchoolModal(false)}
+                  >
+                    <Ionicons name="close" size={20} color="#111827" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalBody}>
+                  {selectedSchool && (
+                    <>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="school" size={20} color="#8B5CF6" style={styles.detailIcon} />
+                        <View style={styles.detailContent}>
+                          <Text style={styles.detailLabel}>School Name</Text>
+                          <Text style={styles.detailValue}>{selectedSchool.name}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="key" size={20} color="#8B5CF6" style={styles.detailIcon} />
+                        <View style={styles.detailContent}>
+                          <Text style={styles.detailLabel}>School Code</Text>
+                          <Text style={styles.detailValue}>{selectedSchool.code}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="location" size={20} color="#8B5CF6" style={styles.detailIcon} />
+                        <View style={styles.detailContent}>
+                          <Text style={styles.detailLabel}>City</Text>
+                          <Text style={styles.detailValue}>{selectedSchool.city || '-'}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="earth" size={20} color="#8B5CF6" style={styles.detailIcon} />
+                        <View style={styles.detailContent}>
+                          <Text style={styles.detailLabel}>Country</Text>
+                          <Text style={styles.detailValue}>{selectedSchool.country || '-'}</Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { marginTop: 12 }]}
+                  onPress={() => setShowSchoolModal(false)}
+                >
+                  <Text style={styles.primaryBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
@@ -304,6 +440,59 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 20,
   },
+  // School section styles
+  loadingContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateText: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  schoolCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  schoolInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  schoolIcon: {
+    marginRight: 12,
+  },
+  schoolDetails: {
+    flex: 1,
+  },
+  schoolName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 4,
+  },
+  schoolLocation: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  schoolCode: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    fontFamily: 'monospace',
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -335,14 +524,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: 16,
   },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+  },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 12,
-    textAlign: 'center',
   },
   modalMessage: {
     fontSize: 16,
@@ -350,6 +549,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
+  },
+  modalBody: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  detailIcon: {
+    marginRight: 12,
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#2c3e50',
+    fontWeight: '500',
+  },
+  primaryBtn: {
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    width: '100%',
+  },
+  primaryBtnText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 16,
   },
   modalButtons: {
     flexDirection: 'row',
