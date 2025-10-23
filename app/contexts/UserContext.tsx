@@ -27,7 +27,10 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; user?: User }>;
   register: (userData: any) => Promise<boolean>;
   logout: () => Promise<void>;
   fetchUserData: () => Promise<void>;
@@ -113,7 +116,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; user?: User }> => {
     try {
       setIsLoading(true);
       Logger.info("🔄 Starting login process", { email });
@@ -151,14 +157,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch fresh user data to ensure we have the latest information
         await fetchUserData();
 
-        return true;
+        return { success: true, user: userData };
       } else {
         Logger.error("❌ Login response missing token or user data");
-        return false;
+        return { success: false };
       }
     } catch (error: any) {
       Logger.logError("POST", `${API_URL}/login`, error);
-      return false;
+      return { success: false };
     } finally {
       setIsLoading(false);
     }
@@ -219,17 +225,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       Logger.info("🔄 Logging out user");
 
-      // Clear state
+      // Clear state first
       setUser(null);
       setToken(null);
 
       // Clear AsyncStorage
-      await AsyncStorage.removeItem("userToken");
-      await AsyncStorage.removeItem("userData");
+      await AsyncStorage.multiRemove(["userToken", "userData"]);
 
       Logger.info("✅ Logout successful");
     } catch (error) {
       Logger.error("❌ Error during logout", error);
+      throw error; // Re-throw so the caller can handle it
     }
   };
 
