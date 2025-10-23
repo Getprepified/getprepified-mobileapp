@@ -240,22 +240,62 @@ const SettingsPage = () => {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.modalBody}>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Name:</Text>{" "}
-                    {me?.school?.name || "-"}
-                  </Text>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Code:</Text>{" "}
-                    {me?.school?.code || "-"}
-                  </Text>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>City:</Text>{" "}
-                    {me?.school?.city || "-"}
-                  </Text>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Country:</Text>{" "}
-                    {me?.school?.country || "-"}
-                  </Text>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="school"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>School Name</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.school?.name || "-"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="key"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>School Code</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.school?.code || "-"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="location"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>City</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.school?.city || "-"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="earth"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Country</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.school?.country || "-"}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
                 <TouchableOpacity
                   style={[styles.primaryBtn, { marginTop: 12 }]}
@@ -289,18 +329,48 @@ const SettingsPage = () => {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.modalBody}>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Name:</Text>{" "}
-                    {me?.parent?.name || "-"}
-                  </Text>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Email:</Text>{" "}
-                    {me?.parent?.email || "-"}
-                  </Text>
-                  <Text style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Parent Code:</Text>{" "}
-                    {me?.parent?.parentCode || "-"}
-                  </Text>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="person"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Parent Name</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.parent?.name || "-"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="mail"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Email</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.parent?.email || "-"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons
+                      name="key"
+                      size={20}
+                      color="#8B5CF6"
+                      style={styles.detailIcon}
+                    />
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Parent Code</Text>
+                      <Text style={styles.detailValue}>
+                        {me?.parent?.parentCode || "-"}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
                 <TouchableOpacity
                   style={[styles.primaryBtn, { marginTop: 12 }]}
@@ -387,11 +457,13 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: "#8B5CF6",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  primaryBtnText: { color: "#ffffff", fontWeight: "700" },
+  primaryBtnText: { color: "#ffffff", fontWeight: "700", textAlign: "center" },
   helpText: { color: "#6B7280", marginBottom: 8 },
   emptyState: { flexDirection: "row", alignItems: "center", gap: 8 },
   emptyText: { color: "#10B981", fontWeight: "600" },
@@ -430,8 +502,16 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 16, fontWeight: "800", color: "#111827" },
   modalBody: { marginTop: 6 },
-  modalRow: { color: "#111827", marginTop: 6 },
-  modalLabel: { color: "#6B7280" },
+  detailRow: { flexDirection: "row", alignItems: "center", marginTop: 12 },
+  detailIcon: { marginRight: 12 },
+  detailContent: { flex: 1 },
+  detailLabel: {
+    color: "#6B7280",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  detailValue: { color: "#111827", fontSize: 14, fontWeight: "500" },
 });
 
 export default SettingsPage;
